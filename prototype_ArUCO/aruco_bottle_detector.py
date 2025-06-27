@@ -6,7 +6,7 @@ from cv2 import aruco
 # --- 1. Configuration & Calibration ---
 
 # == IMPORT CONFIGURATION ==
-from aruco_config import *
+from prototype_ArUCO.aruco_config import *
 
 # Setup ArUco dengan konfigurasi yang bisa di-tune
 try:
