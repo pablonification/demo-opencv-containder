@@ -5,9 +5,10 @@ import imutils # For convenience functions like resizing
 # --- 1. Configuration & Calibration ---
 
 # == REFERENCE OBJECT (BLUE RECTANGLE) CONFIGURATION ==
-KNOWN_REF_OBJECT_HEIGHT_CM = 12
-BLUE_LOWER = np.array([110, 10, 50]) # Hue from 90->100, Saturation from 70->100
-BLUE_UPPER = np.array([130, 60, 255]) # Hue from 130->120
+KNOWN_REF_OBJECT_HEIGHT_CM = 16
+BLUE_LOWER = np.array([0, 0, 0])
+BLUE_UPPER = np.array([180, 255, 50])
+
 
 # == BOTTLE CONFIGURATION (Same as before) ==
 KNOWN_BOTTLE_SPECS = {
@@ -223,7 +224,7 @@ def estimate_and_classify(bottle_info, ppm, known_specs, tolerance_percent):
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    image_path = "dontol.jpg" # GANTI dengan path gambar Anda / Gunakan nama gambar yang diunggah jika menguji dengannya
+    image_path = "hitam.jpg" # GANTI dengan path gambar Anda / Gunakan nama gambar yang diunggah jika menguji dengannya
 
     original_image = cv2.imread(image_path)
     if original_image is None:
@@ -361,7 +362,7 @@ if __name__ == "__main__":
             break
         try:
             # Check if windows were closed by clicking the 'X'
-            if cv2.getWindowProperty("Original Image", cv2.WND_PROP_VISIBLE) < 1:
+            if cv2.getWindowProperty("Original Image", cv2.WND_PROP_VISIBLE) < 1:         
                 print("'Original Image' window closed by user. Closing all windows...")
                 break
             if cv2.getWindowProperty("Detections", cv2.WND_PROP_VISIBLE) < 1:
