@@ -10,7 +10,7 @@ from cv2 import aruco
 # ========================================
 
 # Ukuran fisik marker yang sudah diprint (UKUR DENGAN PENGGARIS!)
-KNOWN_MARKER_SIZE_CM = 5.0  # UBAH ini sesuai ukuran nyata marker Anda
+KNOWN_MARKER_SIZE_CM = 5  # UBAH ini sesuai ukuran nyata marker Anda
 
 # Dictionary ArUco yang digunakan
 ARUCO_DICT_TYPE = aruco.DICT_6X6_250  # Bisa diganti ke DICT_4X4_50, DICT_7X7_250, dll
@@ -125,7 +125,7 @@ KNOWN_BOTTLE_SPECS = {
 }
 
 # Toleransi klasifikasi (%)
-CLASSIFICATION_TOLERANCE_PERCENT = 30  # Bisa diturunkan ke 20 untuk lebih strict
+CLASSIFICATION_TOLERANCE_PERCENT = 20  # Lebih strict untuk akurasi yang lebih baik
 
 # ========================================
 # 5. ROI & DETECTION PARAMETERS

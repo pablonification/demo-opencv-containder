@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
+import os
 import imutils
 from cv2 import aruco
 
 # --- 1. Configuration & Calibration ---
 
 # == IMPORT CONFIGURATION ==
-from prototype_ArUCO.aruco_config import *
+from aruco_config import *
 
 # Setup ArUco dengan konfigurasi yang bisa di-tune
 try:
@@ -104,10 +105,14 @@ def detect_aruco_markers(image, dictionary, parameters):
     
     return marker_data
 
-def calculate_perspective_corrected_calibration(marker_data):
+def calculate_perspective_corrected_calibration(marker_data, bottle_depth_offset_cm=0):
     """
     Calculates perspective-corrected pixels per cm using ArUco marker data.
     Takes into account viewing angle and distance for accurate calibration.
+    
+    Args:
+        marker_data: ArUco marker detection data
+        bottle_depth_offset_cm: Distance difference between marker and bottle (positive if bottle closer)
     """
     if not marker_data:
         print("No ArUco markers found for calibration")
@@ -125,17 +130,37 @@ def calculate_perspective_corrected_calibration(marker_data):
     viewing_angle_rad = np.radians(marker["viewing_angle_deg"])
     perspective_correction = 1.0 / np.cos(viewing_angle_rad)
     
-    # Distance-based correction (optional, for more advanced calibration)
-    # This accounts for lens distortion and can be calibrated empirically
-    distance_correction = 1.0  # Keep simple for now
+    # DEPTH CORRECTION: If bottle is closer than marker
+    depth_correction = 1.0
+    marker_distance_cm = marker["distance"]
     
-    corrected_ppm = basic_ppm * perspective_correction * distance_correction
+    if bottle_depth_offset_cm != 0:
+        bottle_distance_cm = marker_distance_cm - bottle_depth_offset_cm
+        if bottle_distance_cm > 0:  # Avoid division by zero
+            # Closer objects appear larger → need smaller PPM
+            depth_correction = marker_distance_cm / bottle_distance_cm
+            print(f"  Depth Correction Applied:")
+            print(f"    Marker distance: {marker_distance_cm:.1f}cm")
+            print(f"    Bottle distance: {bottle_distance_cm:.1f}cm")
+            print(f"    Depth correction factor: {depth_correction:.3f}")
+        else:
+            print(f"  Warning: Invalid bottle distance ({bottle_distance_cm:.1f}cm), skipping depth correction")
+    
+    corrected_ppm = basic_ppm * perspective_correction * depth_correction
     
     print(f"Calibration Details:")
     print(f"  Basic PPM: {basic_ppm:.2f}")
     print(f"  Viewing angle: {marker['viewing_angle_deg']:.1f}°")
     print(f"  Perspective correction: {perspective_correction:.3f}")
-    print(f"  Corrected PPM: {corrected_ppm:.2f}")
+    if bottle_depth_offset_cm != 0:
+        print(f"  Depth correction: {depth_correction:.3f}")
+    print(f"  Final Corrected PPM: {corrected_ppm:.2f}")
+    
+    # Store correction factors in marker data for reference
+    marker["basic_ppm"] = basic_ppm
+    marker["perspective_correction"] = perspective_correction
+    marker["depth_correction"] = depth_correction
+    marker["corrected_ppm"] = corrected_ppm
     
     return corrected_ppm, marker
 
@@ -339,8 +364,13 @@ if __name__ == "__main__":
     marker_data = detect_aruco_markers(original_image, ARUCO_DICT, ARUCO_PARAMS)
 
     if marker_data:
-        # Calculate perspective-corrected calibration
-        calibration_result = calculate_perspective_corrected_calibration(marker_data)
+        # DEPTH OFFSET CONFIGURATION
+        # Jika marker di dinding dan botol di meja, ubah nilai ini (dalam cm)
+        # Contoh: jika botol 20cm lebih dekat ke kamera daripada marker
+        BOTTLE_DEPTH_OFFSET_CM = 20  # Sesuaikan dengan setup Anda
+        
+        # Calculate perspective-corrected calibration with depth correction
+        calibration_result = calculate_perspective_corrected_calibration(marker_data, BOTTLE_DEPTH_OFFSET_CM)
         
         if calibration_result:
             current_pixels_per_cm, ref_marker_data = calibration_result
@@ -348,20 +378,20 @@ if __name__ == "__main__":
             # Draw ArUco information on display image
             display_image = draw_aruco_info(display_image, marker_data, calibration_result)
             
-            # Define ROI for bottle detection (area above the reference marker)
+            # Define ROI for bottle detection (area BELOW the reference marker)
             ref_center = ref_marker_data["center"]
             ref_corners = ref_marker_data["corners"]
-            
-            # Find the topmost point of the marker
-            ref_top_y = int(np.min(ref_corners[:, 1]))
+
+            # Find the bottommost point of the marker
+            ref_bottom_y = int(np.max(ref_corners[:, 1]))
             ref_left_x = int(np.min(ref_corners[:, 0]))
             ref_right_x = int(np.max(ref_corners[:, 0]))
-            
-            # Define ROI
-            roi_y_start = 0
-            separation_pixels = 10
-            roi_y_end = max(0, ref_top_y - separation_pixels)
-            roi_x_start = max(0, ref_left_x - 100)  # Extend search area
+
+            # Define ROI: start just below the marker and extend to the bottom of the image
+            separation_pixels = 10  # Padding between marker and ROI
+            roi_y_start = min(original_image.shape[0], ref_bottom_y + separation_pixels)
+            roi_y_end = original_image.shape[0]
+            roi_x_start = max(0, ref_left_x - 100)  # Extend search area horizontally
             roi_x_end = min(original_image.shape[1], ref_right_x + 100)
             
             if roi_y_end > roi_y_start and roi_x_end > roi_x_start:
